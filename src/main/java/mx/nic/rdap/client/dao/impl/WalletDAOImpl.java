@@ -6,14 +6,17 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import mx.nic.rdap.client.credential.UserEncryptedCredential;
 import mx.nic.rdap.client.dao.exception.DataAccessException;
 import mx.nic.rdap.client.dao.exception.IncompleteObjectException;
 import mx.nic.rdap.client.dao.model.WalletDAOModel;
+import mx.nic.rdap.client.dao.object.EncryptedCredential;
 import mx.nic.rdap.client.spi.WalletDAO;
 import mx.nic.rdap.client.sql.DatabaseSession;
 import mx.nic.rdap.client.sql.QueryGroup;
@@ -22,7 +25,7 @@ public class WalletDAOImpl implements WalletDAO {
 
 	private final static Logger logger = Logger.getLogger(WalletDAOModel.class.getName());
 
-	private final static String QUERY_GROUP = "Domain";
+	private final static String QUERY_GROUP = "Wallet";
 
 	private static QueryGroup queryGroup = null;
 
@@ -50,16 +53,16 @@ public class WalletDAOImpl implements WalletDAO {
 	}
 
 	@Override
-	public long storeUserCredential(UserEncryptedCredential userServerCredential) throws DataAccessException {
+	public long storeCredential(EncryptedCredential encryptedCredential) throws DataAccessException {
 		try {
-			isValidForStore(userServerCredential);
+			isValidForStore(encryptedCredential);
 		} catch (IncompleteObjectException e) {
 			throw new DataAccessException(e);
 		}
 
 		Long result;
 		try (Connection connection = DatabaseSession.getRdapConnection()) {
-			result = storeToDatabase(userServerCredential, connection);
+			result = storeToDatabase(encryptedCredential, connection);
 		} catch (SQLException e) {
 			throw new DataAccessException(e);
 		}
@@ -68,16 +71,16 @@ public class WalletDAOImpl implements WalletDAO {
 	}
 
 	@Override
-	public int updateUserCredential(UserEncryptedCredential userServerCredential) throws DataAccessException {
+	public int updateCredential(EncryptedCredential encryptedCredential) throws DataAccessException {
 		try {
-			isValidForUpdate(userServerCredential);
+			isValidForUpdate(encryptedCredential);
 		} catch (IncompleteObjectException e) {
 			throw new DataAccessException(e);
 		}
 
 		int result;
 		try (Connection connection = DatabaseSession.getRdapConnection()) {
-			result = updateToDatabase(userServerCredential, connection);
+			result = updateToDatabase(encryptedCredential, connection);
 		} catch (SQLException e) {
 			throw new DataAccessException(e);
 		}
@@ -85,25 +88,80 @@ public class WalletDAOImpl implements WalletDAO {
 	}
 
 	@Override
-	public List<UserEncryptedCredential> getUserCredentialForRdapServer(long userId, String serverDomain)
+	public List<EncryptedCredential> getCredentialsForRdapServer(long userId, String serverId)
 			throws DataAccessException {
-		// TODO Auto-generated method stub
-		return null;
+		if (Objects.isNull(serverId)) {
+			throw new DataAccessException(new IncompleteObjectException("serverId", "WalletDAO"));
+		}
+
+		List<EncryptedCredential> credentials;
+
+		String query = getQueryGroup().getQuery(GET_BY_USER_ID_AND_DOMAIN);
+		try (Connection connection = DatabaseSession.getRdapConnection();
+				PreparedStatement statement = connection.prepareStatement(query);) {
+			fillGetByUserIdAndDomain(userId, serverId, statement);
+			logger.log(Level.INFO, "Executing QUERY: " + statement.toString());
+			ResultSet rs = statement.executeQuery();
+
+			if (!rs.next()) {
+				return Collections.emptyList();
+			}
+
+			credentials = new ArrayList<>();
+			do {
+				EncryptedCredential credential = getCredentialFromResultSet(rs);
+				credentials.add(credential);
+			} while (rs.next());
+
+		} catch (SQLException e) {
+			throw new DataAccessException(e);
+		}
+
+		return credentials;
 	}
 
 	@Override
-	public List<UserEncryptedCredential> getUserCredentials(long userId) throws DataAccessException {
-		// TODO Auto-generated method stub
-		return null;
+	public List<EncryptedCredential> getCredentials(long userId) throws DataAccessException {
+		List<EncryptedCredential> credentials;
+
+		String query = getQueryGroup().getQuery(GET_ALL_BY_USER_ID);
+		try (Connection connection = DatabaseSession.getRdapConnection();
+				PreparedStatement statement = connection.prepareStatement(query);) {
+			fillGetAllByUserId(userId, statement);
+			logger.log(Level.INFO, "Executing QUERY: " + statement.toString());
+			ResultSet rs = statement.executeQuery();
+
+			if (!rs.next()) {
+				return Collections.emptyList();
+			}
+
+			credentials = new ArrayList<>();
+			do {
+				EncryptedCredential credential = getCredentialFromResultSet(rs);
+				credentials.add(credential);
+			} while (rs.next());
+
+		} catch (SQLException e) {
+			throw new DataAccessException(e);
+		}
+
+		return credentials;
 	}
 
 	@Override
-	public void deleteUserCredential(long userId, long loginId) throws DataAccessException {
-		// TODO Auto-generated method stub
-
+	public void deleteCredential(long userId, long credentialId) throws DataAccessException {
+		String query = getQueryGroup().getQuery(DELETE_RDAP_CREDENTIAL);
+		try (Connection con = DatabaseSession.getRdapConnection();
+				PreparedStatement statement = con.prepareStatement(query);) {
+			fillDeleteStatement(userId, credentialId, statement);
+			logger.log(Level.INFO, "Executing QUERY: " + statement.toString());
+			statement.executeUpdate();
+		} catch (SQLException e) {
+			throw new DataAccessException(e);
+		}
 	}
 
-	private Long storeToDatabase(UserEncryptedCredential rdapLogin, Connection connection) throws SQLException {
+	private Long storeToDatabase(EncryptedCredential rdapLogin, Connection connection) throws SQLException {
 		String query = getQueryGroup().getQuery(STORE_RDAP_CREDENTIAL);
 		Long loginId;
 		try (PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
@@ -120,7 +178,7 @@ public class WalletDAOImpl implements WalletDAO {
 		return loginId;
 	}
 
-	private int updateToDatabase(UserEncryptedCredential rdapLogin, Connection connection) throws SQLException {
+	private int updateToDatabase(EncryptedCredential rdapLogin, Connection connection) throws SQLException {
 		int result;
 		String query = getQueryGroup().getQuery(UPDATE_RDAP_CREDENTIAL);
 		try (PreparedStatement statement = connection.prepareStatement(query)) {
@@ -132,8 +190,8 @@ public class WalletDAOImpl implements WalletDAO {
 		return result;
 	}
 
-	private static void isValidForStore(UserEncryptedCredential rdapLogin) throws IncompleteObjectException {
-		if (rdapLogin.getClientUserId() == null) {
+	private static void isValidForStore(EncryptedCredential rdapLogin) throws IncompleteObjectException {
+		if (rdapLogin.getUserId() == null) {
 			throw new IncompleteObjectException("clientUserId", rdapLogin.getClass().getSimpleName());
 		}
 
@@ -153,7 +211,7 @@ public class WalletDAOImpl implements WalletDAO {
 		}
 	}
 
-	private static void isValidForUpdate(UserEncryptedCredential rdapLogin) throws IncompleteObjectException {
+	private static void isValidForUpdate(EncryptedCredential rdapLogin) throws IncompleteObjectException {
 		if (rdapLogin.getId() == null) {
 			throw new IncompleteObjectException("id", rdapLogin.getClass().getSimpleName());
 		}
@@ -170,27 +228,45 @@ public class WalletDAOImpl implements WalletDAO {
 		statement.setLong(1, userId);
 	}
 
-	private static void fillStoreStatement(UserEncryptedCredential rdapLogin, PreparedStatement statement)
+	private static void fillStoreStatement(EncryptedCredential rdapLogin, PreparedStatement statement)
 			throws SQLException {
-		statement.setLong(1, rdapLogin.getClientUserId());
+		statement.setLong(1, rdapLogin.getUserId());
 		statement.setString(2, rdapLogin.getRdapServerId());
 		statement.setString(3, rdapLogin.getUsername());
 		statement.setString(4, rdapLogin.getEncryptedPassword());
 	}
 
-	private static void fillUpdateStatement(UserEncryptedCredential rdapLogin, PreparedStatement statement)
+	private static void fillUpdateStatement(EncryptedCredential rdapLogin, PreparedStatement statement)
 			throws SQLException {
 		statement.setString(1, rdapLogin.getUsername());
 		statement.setString(2, rdapLogin.getEncryptedPassword());
 
-		statement.setLong(3, rdapLogin.getClientUserId());
+		statement.setLong(3, rdapLogin.getUserId());
 		statement.setString(4, rdapLogin.getRdapServerId());
 		statement.setLong(5, rdapLogin.getId());
 	}
 
-	private static void fillDeleteStatement(UserEncryptedCredential rdapLogin, PreparedStatement statement)
+	private static void fillDeleteStatement(long userId, long credentialId, PreparedStatement statement)
 			throws SQLException {
-		statement.setLong(1, rdapLogin.getClientUserId());
+		statement.setLong(1, userId);
+		statement.setLong(2, credentialId);
+	}
+
+	private static EncryptedCredential getCredentialFromResultSet(ResultSet rs) throws SQLException {
+		EncryptedCredential credential = new EncryptedCredential();
+
+		long id = rs.getLong("cre_id");
+		credential.setId(id);
+		long userId = rs.getLong("cre_user_id");
+		credential.setUserId(userId);
+		String serverId = rs.getString("cre_server_id");
+		credential.setRdapServerId(serverId);
+		String username = rs.getString("cre_username");
+		credential.setUsername(username);
+		String encryptedPassword = rs.getString("cre_encrypted_password");
+		credential.setEncryptedPassword(encryptedPassword);
+
+		return credential;
 	}
 
 }

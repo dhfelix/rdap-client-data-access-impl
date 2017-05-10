@@ -2,7 +2,6 @@ package mx.nic.rdap.client.dao.impl;
 
 import java.util.Properties;
 
-import mx.nic.rdap.client.dao.exception.DataAccessException;
 import mx.nic.rdap.client.dao.exception.InitializationException;
 import mx.nic.rdap.client.spi.DataAccessImplementation;
 import mx.nic.rdap.client.spi.UserDAO;
@@ -11,23 +10,21 @@ import mx.nic.rdap.client.spi.WalletDAO;
 public class SQLDataAccessImpl implements DataAccessImplementation {
 
 	public SQLDataAccessImpl() {
-		// TODO Auto-generated constructor stub
+		// no code
 	}
 
 	@Override
-	public UserDAO getUserDAO() throws DataAccessException {
-		// TODO Auto-generated method stub
-		return null;
+	public UserDAO getUserDAO() {
+		return new UserDAOImpl();
 	}
 
 	@Override
-	public WalletDAO getWalletDAO() throws DataAccessException {
-		// TODO Auto-generated method stub
-		return null;
+	public WalletDAO getWalletDAO() {
+		return new WalletDAOImpl();
 	}
 
 	@Override
-	public void init(Properties arg0) throws InitializationException {
+	public void init(Properties properties) throws InitializationException {
 		// TODO Auto-generated method stub
 
 	}
