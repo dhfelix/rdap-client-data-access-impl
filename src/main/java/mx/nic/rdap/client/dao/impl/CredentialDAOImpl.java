@@ -15,25 +15,24 @@ import java.util.logging.Logger;
 
 import mx.nic.rdap.client.dao.exception.DataAccessException;
 import mx.nic.rdap.client.dao.exception.IncompleteObjectException;
-import mx.nic.rdap.client.dao.model.WalletDAOModel;
 import mx.nic.rdap.client.dao.object.EncryptedCredential;
-import mx.nic.rdap.client.spi.WalletDAO;
+import mx.nic.rdap.client.spi.CredentialDAO;
 import mx.nic.rdap.client.sql.DatabaseSession;
 import mx.nic.rdap.client.sql.QueryGroup;
 
-public class WalletDAOImpl implements WalletDAO {
+public class CredentialDAOImpl implements CredentialDAO {
 
-	private final static Logger logger = Logger.getLogger(WalletDAOModel.class.getName());
+	private final static Logger logger = Logger.getLogger(CredentialDAOImpl.class.getName());
 
-	private final static String QUERY_GROUP = "Wallet";
+	private final static String QUERY_GROUP = "credential";
 
 	private static QueryGroup queryGroup = null;
 
-	private static final String GET_BY_USER_ID_AND_DOMAIN = "getByUserIdAndDomain";
-	private static final String GET_ALL_BY_USER_ID = "getAllByUserId";
-	private static final String STORE_RDAP_CREDENTIAL = "storeRdapCredential";
-	private static final String UPDATE_RDAP_CREDENTIAL = "updateRdapCredential";
-	private static final String DELETE_RDAP_CREDENTIAL = "deleteRdapCredential";
+	private static final String GET_BY_USER_ID_AND_DOMAIN = "getCredentialByUserIdAndServerId";
+	private static final String GET_ALL_BY_USER_ID = "getAllCredentialsByUserId";
+	private static final String STORE_RDAP_CREDENTIAL = "storeCredential";
+	private static final String UPDATE_RDAP_CREDENTIAL = "updateCredential";
+	private static final String DELETE_RDAP_CREDENTIAL = "deleteCredential";
 
 	public static void loadQueryGroup(String schema) {
 		try {
@@ -218,10 +217,10 @@ public class WalletDAOImpl implements WalletDAO {
 		isValidForStore(rdapLogin);
 	}
 
-	private static void fillGetByUserIdAndDomain(long userId, String domainName, PreparedStatement statement)
+	private static void fillGetByUserIdAndDomain(long userId, String serverId, PreparedStatement statement)
 			throws SQLException {
 		statement.setLong(1, userId);
-		statement.setString(2, domainName);
+		statement.setString(2, serverId);
 	}
 
 	private static void fillGetAllByUserId(long userId, PreparedStatement statement) throws SQLException {
@@ -231,18 +230,18 @@ public class WalletDAOImpl implements WalletDAO {
 	private static void fillStoreStatement(EncryptedCredential rdapLogin, PreparedStatement statement)
 			throws SQLException {
 		statement.setLong(1, rdapLogin.getUserId());
-		statement.setString(2, rdapLogin.getRdapServerId());
-		statement.setString(3, rdapLogin.getUsername());
-		statement.setString(4, rdapLogin.getEncryptedPassword());
+		statement.setString(2, rdapLogin.getUsername());
+		statement.setString(3, rdapLogin.getEncryptedPassword());
+		statement.setString(4, rdapLogin.getRdapServerId());
 	}
 
 	private static void fillUpdateStatement(EncryptedCredential rdapLogin, PreparedStatement statement)
 			throws SQLException {
 		statement.setString(1, rdapLogin.getUsername());
 		statement.setString(2, rdapLogin.getEncryptedPassword());
+		statement.setString(3, rdapLogin.getRdapServerId());
 
-		statement.setLong(3, rdapLogin.getUserId());
-		statement.setString(4, rdapLogin.getRdapServerId());
+		statement.setLong(4, rdapLogin.getUserId());
 		statement.setLong(5, rdapLogin.getId());
 	}
 

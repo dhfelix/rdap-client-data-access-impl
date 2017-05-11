@@ -14,7 +14,6 @@ import java.util.logging.Logger;
 
 import mx.nic.rdap.client.dao.exception.DataAccessException;
 import mx.nic.rdap.client.dao.exception.IncompleteObjectException;
-import mx.nic.rdap.client.dao.object.EncryptedWalletKey;
 import mx.nic.rdap.client.dao.object.RdapClientUser;
 import mx.nic.rdap.client.spi.UserDAO;
 import mx.nic.rdap.client.sql.DatabaseSession;
@@ -24,15 +23,12 @@ public class UserDAOImpl implements UserDAO {
 
 	private static final Logger logger = Logger.getLogger(UserDAOImpl.class.getName());
 
-	private static final String GET_USER = "getByUsername";
+	private static final String GET_USER = "getUserByUsername";
 	private static final String STORE_USER = "storeUser";
 	private static final String UPDATE_USER = "updateUser";
+	private static final String EXIST_USER = "existUser";
 
-	private static final String GET_WALLET_KEY = "getByUserId";
-	private static final String STORE_WALLET_KEY = "storeWallet";
-	private static final String UPDATE_WALLET_KEY = "updateWallet";
-
-	private final static String QUERY_GROUP = "User";
+	private final static String QUERY_GROUP = "user";
 
 	private static QueryGroup queryGroup = null;
 
@@ -81,7 +77,7 @@ public class UserDAOImpl implements UserDAO {
 		return user;
 	}
 
-	public static RdapClientUser getFromResultSet(ResultSet rs) throws SQLException {
+	private static RdapClientUser getFromResultSet(ResultSet rs) throws SQLException {
 		RdapClientUser user = new RdapClientUser();
 		user.setId(rs.getLong("usr_id"));
 		user.setUsername(rs.getString("usr_username"));
@@ -129,12 +125,12 @@ public class UserDAOImpl implements UserDAO {
 	private static void fillStoreStatement(RdapClientUser user, PreparedStatement statement) throws SQLException {
 		statement.setString(1, user.getUsername());
 		statement.setString(2, user.getHashedPassword());
-		statement.setString(3, user.getHashAlgorithm());
+		statement.setString(3, user.getSalt());
 		statement.setInt(4, user.getIterations());
-		statement.setString(5, user.getSalt());
-		statement.setString(6, user.getPbeAlgorithm());
-		statement.setString(7, user.getKeyAlgorithm());
-		statement.setInt(8, user.getKeySize());
+		statement.setString(5, user.getHashAlgorithm());
+		statement.setString(6, user.getKeyAlgorithm());
+		statement.setInt(7, user.getKeySize());
+		statement.setString(8, user.getPbeAlgorithm());
 	}
 
 	private static void isValidForStore(RdapClientUser user) throws DataAccessException {
@@ -199,15 +195,15 @@ public class UserDAOImpl implements UserDAO {
 
 	private void fillUpdateStatement(RdapClientUser user, PreparedStatement statement) throws SQLException {
 		statement.setString(1, user.getHashedPassword());
-		statement.setString(2, user.getHashAlgorithm());
+		statement.setString(2, user.getSalt());
 		statement.setInt(3, user.getIterations());
-		statement.setString(4, user.getSalt());
-		statement.setString(5, user.getPbeAlgorithm());
-		statement.setString(6, user.getKeyAlgorithm());
-		statement.setInt(7, user.getKeySize());
+		statement.setString(4, user.getHashAlgorithm());
+		statement.setString(5, user.getKeyAlgorithm());
+		statement.setInt(6, user.getKeySize());
+		statement.setString(7, user.getPbeAlgorithm());
 
-		statement.setString(8, user.getUsername());
-		statement.setLong(9, user.getId());
+		statement.setLong(8, user.getId());
+		statement.setString(9, user.getUsername());
 	}
 
 	private void isValidForUpdate(RdapClientUser user) throws DataAccessException {
@@ -239,7 +235,7 @@ public class UserDAOImpl implements UserDAO {
 		}
 
 		boolean result;
-		String query = getQueryGroup().getQuery("existUser");
+		String query = getQueryGroup().getQuery(EXIST_USER);
 		try (Connection connection = DatabaseSession.getRdapConnection();
 				PreparedStatement statement = connection.prepareStatement(query);) {
 			statement.setString(1, username);
@@ -251,160 +247,6 @@ public class UserDAOImpl implements UserDAO {
 			throw new DataAccessException(e);
 		}
 		return result;
-	}
-
-	@Override
-	public EncryptedWalletKey getWalletKey(long userId) throws DataAccessException {
-		if (userId <= 0) {
-			throw new DataAccessException("Invalid value userId: " + userId);
-		}
-
-		EncryptedWalletKey key;
-
-		String query = getQueryGroup().getQuery(GET_WALLET_KEY);
-		try (Connection connection = DatabaseSession.getRdapConnection();
-				PreparedStatement statement = connection.prepareStatement(query);) {
-			statement.setLong(1, userId);
-			logger.log(Level.INFO, "Executing QUERY: " + statement.toString());
-			ResultSet rs = statement.executeQuery();
-
-			if (!rs.next()) {
-				return null;
-			}
-
-			key = getWalletKeyFromResultSet(rs);
-
-		} catch (SQLException e) {
-			throw new DataAccessException(e);
-		}
-
-		return key;
-	}
-
-	private EncryptedWalletKey getWalletKeyFromResultSet(ResultSet rs) throws SQLException {
-		long keyId = rs.getLong("key_id");
-		long userId = rs.getLong("usr_id");
-		String encryptedWalletKey = rs.getString("key_wallet_key");
-		String walletKeyAlgorithm = rs.getString("key_wallet_key_algorithm");
-
-		EncryptedWalletKey key = new EncryptedWalletKey();
-		key.setId(keyId);
-		key.setUserId(userId);
-		key.setEncryptedWalletKey(encryptedWalletKey);
-		key.setWalletKeyAlgorithm(walletKeyAlgorithm);
-		return key;
-	}
-
-	@Override
-	public long storeWalletKey(EncryptedWalletKey encryptedWalletKey) throws DataAccessException {
-		isValidForStore(encryptedWalletKey);
-		long keyId;
-		try (Connection connection = DatabaseSession.getRdapConnection();) {
-			keyId = storeToDatabase(encryptedWalletKey, connection);
-		} catch (SQLException e) {
-			throw new DataAccessException(e);
-		}
-
-		return keyId;
-	}
-
-	private void isValidForStore(EncryptedWalletKey key) throws DataAccessException {
-		List<IncompleteObjectException> list = new ArrayList<>();
-		if (key.getUserId() == null) {
-			list.add(new IncompleteObjectException("user", EncryptedWalletKey.class.getSimpleName()));
-		}
-		if (key.getEncryptedWalletKey() == null) {
-			list.add(new IncompleteObjectException("encryptedWalletKey", EncryptedWalletKey.class.getSimpleName()));
-		}
-		if (key.getWalletKeyAlgorithm() == null) {
-			list.add(new IncompleteObjectException("walletKeyAlgorithm", EncryptedWalletKey.class.getSimpleName()));
-		}
-
-		if (!list.isEmpty()) {
-			DataAccessException e = new DataAccessException(list.get(0));
-			for (int i = 1; i < list.size(); i++) {
-				e.addSuppressed(list.get(i));
-			}
-			throw e;
-		}
-	}
-
-	private long storeToDatabase(EncryptedWalletKey key, Connection connection) throws SQLException {
-		Long keyId;
-		String query = getQueryGroup().getQuery(STORE_WALLET_KEY);
-		try (PreparedStatement statement = connection.prepareStatement(query, Statement.RETURN_GENERATED_KEYS)) {
-			fillStoreStatement(key, statement);
-			logger.log(Level.INFO, "Executing QUERY: " + statement.toString());
-			statement.executeUpdate();
-
-			ResultSet resultSet = statement.getGeneratedKeys();
-			resultSet.next();
-			keyId = resultSet.getLong(1);
-			key.setId(keyId);
-		}
-
-		return keyId;
-
-	}
-
-	private void fillStoreStatement(EncryptedWalletKey key, PreparedStatement statement) throws SQLException {
-		statement.setLong(1, key.getUserId());
-		statement.setString(2, key.getEncryptedWalletKey());
-		statement.setString(3, key.getWalletKeyAlgorithm());
-
-	}
-
-	@Override
-	public void updateWalletKey(EncryptedWalletKey encryptedWalletKey) throws DataAccessException {
-		isValidForUpdate(encryptedWalletKey);
-
-		try (Connection connection = DatabaseSession.getRdapConnection()) {
-			updateWalletKey(encryptedWalletKey, connection);
-		} catch (SQLException e) {
-			throw new DataAccessException(e);
-		}
-
-	}
-
-	private void isValidForUpdate(EncryptedWalletKey key) throws DataAccessException {
-		DataAccessException exc = null;
-		try {
-			isValidForStore(key);
-		} catch (DataAccessException e) {
-			exc = e;
-		}
-
-		if (key.getId() == null) {
-			IncompleteObjectException cause = new IncompleteObjectException("id",
-					EncryptedWalletKey.class.getSimpleName());
-			if (exc == null) {
-				exc = new DataAccessException(cause);
-			} else {
-				exc.addSuppressed(cause);
-			}
-		}
-
-		if (exc != null) {
-			throw exc;
-		}
-	}
-
-	private void updateWalletKey(EncryptedWalletKey key, Connection connection) throws SQLException {
-		String query = getQueryGroup().getQuery(UPDATE_WALLET_KEY);
-		try (PreparedStatement statement = connection.prepareStatement(query)) {
-			fillUpdateStatement(key, statement);
-			logger.log(Level.INFO, "Executing QUERY: " + statement.toString());
-			statement.executeUpdate();
-		}
-
-	}
-
-	private void fillUpdateStatement(EncryptedWalletKey key, PreparedStatement statement) throws SQLException {
-		statement.setString(1, key.getEncryptedWalletKey());
-		statement.setString(2, key.getWalletKeyAlgorithm());
-
-		statement.setLong(3, key.getId());
-		statement.setLong(4, key.getUserId());
 	}
 
 }
