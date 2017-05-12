@@ -10,5 +10,5 @@
 /target/
 
 # Files potentially containing passwords
-/src/test/resources/config/*.properties
+/src/test/resources/test_config/*.properties
 

@@ -126,7 +126,16 @@ public class DatabaseSession {
 		dataSource.setUsername(config.getProperty("userName"));
 		dataSource.setPassword(config.getProperty("password"));
 		dataSource.setDefaultAutoCommit(Boolean.parseBoolean(config.getProperty("autoCommit", "false")));
-		dataSource.setMaxTotal(Integer.parseInt(config.getProperty("maxTotal", "0")));
+		dataSource.setMaxTotal(Integer.parseInt(config.getProperty("maxTotal", "8")));
+		
+		dataSource.setInitialSize(Integer.parseInt(config.getProperty("initialSize", "0")));
+		dataSource.setMaxIdle(Integer.parseInt(config.getProperty("maxIdle", "8")));
+		dataSource.setMinIdle(Integer.parseInt(config.getProperty("minIdle", "0")));
+		dataSource.setMaxWaitMillis(Integer.parseInt(config.getProperty("maxWaitMillis", "-1")));
+		dataSource.setMinEvictableIdleTimeMillis(
+				Integer.parseInt(config.getProperty("minEvictableIdleTimeMillis", "1800000")));
+
+		dataSource.setMaxConnLifetimeMillis(Integer.parseInt(config.getProperty("maxConnLifetimeMillis", "-1")));
 
 		try {
 			testDatabase(dataSource);
