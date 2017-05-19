@@ -256,7 +256,7 @@ public class CredentialDAOImpl implements CredentialDAO {
 
 		long id = rs.getLong("cre_id");
 		credential.setId(id);
-		long userId = rs.getLong("usr_id");
+		long userId = rs.getLong("wusr_id");
 		credential.setUserId(userId);
 		String serverId = rs.getString("cre_server_id");
 		credential.setRdapServerId(serverId);

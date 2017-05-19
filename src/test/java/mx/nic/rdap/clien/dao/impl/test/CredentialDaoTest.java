@@ -8,11 +8,11 @@ import org.junit.Test;
 
 import mx.nic.rdap.client.dao.exception.DataAccessException;
 import mx.nic.rdap.client.dao.impl.CredentialDAOImpl;
-import mx.nic.rdap.client.dao.impl.UserDAOImpl;
+import mx.nic.rdap.client.dao.impl.WalletUserDAOImpl;
 import mx.nic.rdap.client.dao.object.EncryptedCredential;
-import mx.nic.rdap.client.dao.object.RdapClientUser;
+import mx.nic.rdap.client.dao.object.WalletUser;
 import mx.nic.rdap.client.spi.CredentialDAO;
-import mx.nic.rdap.client.spi.UserDAO;
+import mx.nic.rdap.client.spi.WalletUserDAO;
 
 public class CredentialDaoTest extends DatabaseTest {
 	@Test
@@ -20,10 +20,10 @@ public class CredentialDaoTest extends DatabaseTest {
 		long randomId = ThreadLocalRandom.current().nextLong(Long.MAX_VALUE);
 		String username = "wallet_user_" + randomId;
 
-		RdapClientUser createUser = UserDaoTest.createUser(username, "");
+		WalletUser createUser = WalletUserDAOTest.createUser(username, "");
 
-		UserDAO userDao = new UserDAOImpl();
-		userDao.storeUser(createUser);
+		WalletUserDAO userDao = new WalletUserDAOImpl();
+		userDao.store(createUser);
 
 		CredentialDAO dao = new CredentialDAOImpl();
 		EncryptedCredential credential = getCredential(createUser.getId(), "MX");
@@ -46,6 +46,8 @@ public class CredentialDaoTest extends DatabaseTest {
 
 		List<EncryptedCredential> emptyCredentials = dao.getCredentials(createUser.getId());
 		Assert.assertTrue(emptyCredentials.isEmpty());
+
+		userDao.delete(createUser);
 
 	}
 

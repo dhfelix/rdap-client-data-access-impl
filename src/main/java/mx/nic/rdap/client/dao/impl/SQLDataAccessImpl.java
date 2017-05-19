@@ -8,8 +8,7 @@ import java.util.Properties;
 import mx.nic.rdap.client.dao.exception.InitializationException;
 import mx.nic.rdap.client.spi.CredentialDAO;
 import mx.nic.rdap.client.spi.DataAccessImplementation;
-import mx.nic.rdap.client.spi.UserDAO;
-import mx.nic.rdap.client.spi.WalletKeyDAO;
+import mx.nic.rdap.client.spi.WalletUserDAO;
 import mx.nic.rdap.client.sql.DatabaseSession;
 
 public class SQLDataAccessImpl implements DataAccessImplementation {
@@ -22,18 +21,13 @@ public class SQLDataAccessImpl implements DataAccessImplementation {
 	}
 
 	@Override
-	public UserDAO getUserDAO() {
-		return new UserDAOImpl();
-	}
-
-	@Override
 	public CredentialDAO getCredentialDAO() {
 		return new CredentialDAOImpl();
 	}
 
 	@Override
-	public WalletKeyDAO getWalletKeyDAO() {
-		return new WalletKeyDAOImpl();
+	public WalletUserDAO getWalletUserDAO() {
+		return new WalletUserDAOImpl();
 	}
 
 	@Override
@@ -58,9 +52,8 @@ public class SQLDataAccessImpl implements DataAccessImplementation {
 
 		Objects.requireNonNull(schema);
 
-		UserDAOImpl.loadQueryGroup(schema);
+		WalletUserDAOImpl.loadQueryGroup(schema);
 		CredentialDAOImpl.loadQueryGroup(schema);
-		WalletKeyDAOImpl.loadQueryGroup(schema);
 	}
 
 }

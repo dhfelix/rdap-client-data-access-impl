@@ -13,8 +13,7 @@ import org.junit.BeforeClass;
 
 import mx.nic.rdap.client.dao.exception.InitializationException;
 import mx.nic.rdap.client.dao.impl.CredentialDAOImpl;
-import mx.nic.rdap.client.dao.impl.UserDAOImpl;
-import mx.nic.rdap.client.dao.impl.WalletKeyDAOImpl;
+import mx.nic.rdap.client.dao.impl.WalletUserDAOImpl;
 import mx.nic.rdap.client.sql.DatabaseSession;
 
 /**
@@ -52,9 +51,8 @@ public class DatabaseTest {
 	}
 
 	private static void initAllStoreModels(String schema) {
-		WalletKeyDAOImpl.loadQueryGroup(schema);
-		UserDAOImpl.loadQueryGroup(schema);
 		CredentialDAOImpl.loadQueryGroup(schema);
+		WalletUserDAOImpl.loadQueryGroup(schema);
 	}
 
 	@AfterClass
