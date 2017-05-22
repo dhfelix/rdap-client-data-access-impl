@@ -33,6 +33,7 @@ public class CredentialDAOImpl implements CredentialDAO {
 	private static final String STORE_RDAP_CREDENTIAL = "storeCredential";
 	private static final String UPDATE_RDAP_CREDENTIAL = "updateCredential";
 	private static final String DELETE_RDAP_CREDENTIAL = "deleteCredential";
+	private static final String EXIST_CREDENTIAL = "existCredential";
 
 	public static void loadQueryGroup(String schema) {
 		try {
@@ -70,30 +71,27 @@ public class CredentialDAOImpl implements CredentialDAO {
 	}
 
 	@Override
-	public int updateCredential(EncryptedCredential encryptedCredential) throws DataAccessException {
+	public void updateCredential(EncryptedCredential encryptedCredential) throws DataAccessException {
 		try {
 			isValidForUpdate(encryptedCredential);
 		} catch (IncompleteObjectException e) {
 			throw new DataAccessException(e);
 		}
 
-		int result;
 		try (Connection connection = DatabaseSession.getRdapConnection()) {
-			result = updateToDatabase(encryptedCredential, connection);
+			updateToDatabase(encryptedCredential, connection);
 		} catch (SQLException e) {
 			throw new DataAccessException(e);
 		}
-		return result;
 	}
 
 	@Override
-	public List<EncryptedCredential> getCredentialsForRdapServer(long userId, String serverId)
-			throws DataAccessException {
+	public EncryptedCredential getCredentialForRdapServer(long userId, String serverId) throws DataAccessException {
 		if (Objects.isNull(serverId)) {
 			throw new DataAccessException(new IncompleteObjectException("serverId", "WalletDAO"));
 		}
 
-		List<EncryptedCredential> credentials;
+		EncryptedCredential credential;
 
 		String query = getQueryGroup().getQuery(GET_BY_USER_ID_AND_DOMAIN);
 		try (Connection connection = DatabaseSession.getRdapConnection();
@@ -103,20 +101,16 @@ public class CredentialDAOImpl implements CredentialDAO {
 			ResultSet rs = statement.executeQuery();
 
 			if (!rs.next()) {
-				return Collections.emptyList();
+				return null;
 			}
 
-			credentials = new ArrayList<>();
-			do {
-				EncryptedCredential credential = getCredentialFromResultSet(rs);
-				credentials.add(credential);
-			} while (rs.next());
+			credential = getCredentialFromResultSet(rs);
 
 		} catch (SQLException e) {
 			throw new DataAccessException(e);
 		}
 
-		return credentials;
+		return credential;
 	}
 
 	@Override
@@ -266,6 +260,31 @@ public class CredentialDAOImpl implements CredentialDAO {
 		credential.setEncryptedPassword(encryptedPassword);
 
 		return credential;
+	}
+
+	@Override
+	public boolean existCredential(long userId, String serverId) throws DataAccessException {
+
+		boolean result;
+		String query = getQueryGroup().getQuery(EXIST_CREDENTIAL);
+		try (Connection connection = DatabaseSession.getRdapConnection();
+				PreparedStatement statement = connection.prepareStatement(query);) {
+			statement.setLong(1, userId);
+			statement.setString(2, serverId);
+
+			logger.log(Level.INFO, "Executing QUERY: " + statement.toString());
+			ResultSet rs = statement.executeQuery();
+
+			if (!rs.next()) {
+				result = false;
+			} else {
+				result = true;
+			}
+		} catch (SQLException e) {
+			throw new DataAccessException(e);
+		}
+
+		return result;
 	}
 
 }

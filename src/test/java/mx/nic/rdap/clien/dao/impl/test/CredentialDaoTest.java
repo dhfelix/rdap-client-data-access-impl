@@ -36,6 +36,10 @@ public class CredentialDaoTest extends DatabaseTest {
 		credential.setRdapServerId("COM");
 		dao.updateCredential(credential);
 
+		Assert.assertFalse(dao.existCredential(createUser.getId(), "MX"));
+		Assert.assertTrue(dao.existCredential(createUser.getId(), "COM"));
+		Assert.assertEquals(credential, dao.getCredentialForRdapServer(createUser.getId(), "COM"));
+
 		List<EncryptedCredential> credentials2 = dao.getCredentials(createUser.getId());
 		Assert.assertFalse(credentials.contains(credential));
 		Assert.assertTrue(credentials2.contains(credential));
