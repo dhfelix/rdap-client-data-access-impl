@@ -88,7 +88,7 @@ public class CredentialDAOImpl implements CredentialDAO {
 	@Override
 	public EncryptedCredential getCredentialForRdapServer(long userId, String serverId) throws DataAccessException {
 		if (Objects.isNull(serverId)) {
-			throw new DataAccessException(new IncompleteObjectException("serverId", "WalletDAO"));
+			throw new DataAccessException("serverId can't be null");
 		}
 
 		EncryptedCredential credential;
@@ -185,12 +185,12 @@ public class CredentialDAOImpl implements CredentialDAO {
 
 	private static void isValidForStore(EncryptedCredential rdapLogin) throws IncompleteObjectException {
 		if (rdapLogin.getUserId() == null) {
-			throw new IncompleteObjectException("clientUserId", rdapLogin.getClass().getSimpleName());
+			throw new IncompleteObjectException("userId", rdapLogin.getClass().getSimpleName());
 		}
 
-		String rdapServerDomain = rdapLogin.getRdapServerId();
-		if (rdapServerDomain == null || rdapServerDomain.isEmpty()) {
-			throw new IncompleteObjectException("serverDomain", rdapLogin.getClass().getSimpleName());
+		String serverId = rdapLogin.getRdapServerId();
+		if (serverId == null || serverId.isEmpty()) {
+			throw new IncompleteObjectException("serverId", rdapLogin.getClass().getSimpleName());
 		}
 
 		String username = rdapLogin.getUsername();
