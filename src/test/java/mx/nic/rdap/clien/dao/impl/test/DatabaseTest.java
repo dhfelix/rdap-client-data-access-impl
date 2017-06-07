@@ -11,6 +11,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
+import mx.nic.rdap.client.dao.desktop.DatabaseCreator;
 import mx.nic.rdap.client.dao.exception.InitializationException;
 import mx.nic.rdap.client.dao.impl.CredentialDAOImpl;
 import mx.nic.rdap.client.dao.impl.WalletUserDAOImpl;
@@ -38,7 +39,7 @@ public class DatabaseTest {
 	}
 
 	@BeforeClass
-	public static void init() throws IOException, InitializationException {
+	public static void init() throws IOException, InitializationException, SQLException {
 		Properties p = new Properties();
 
 		try (InputStream resourceAsStream = DatabaseTest.class.getClassLoader()
@@ -47,6 +48,7 @@ public class DatabaseTest {
 		}
 
 		DatabaseSession.initRdapConnection(p);
+		DatabaseCreator.createDatabaseTables();
 		initAllStoreModels(p.getProperty("schema"));
 	}
 
